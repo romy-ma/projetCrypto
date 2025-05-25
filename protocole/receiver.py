@@ -71,11 +71,11 @@ class SecureFileReceiver:
         
         # Try to load existing keys if requested
         if load_keys and self._keys_exist():
-            print("Loading existing keys...")
+            print("Chargement des clés existantes...")
             self._load_keys()
         else:
             # Generate new keys
-            print("Generating RSA keys...")
+            print("Génération des clés RSA...")
             self.rsa_private_key = rsa.generate_private_key(
                 public_exponent=65537,
                 key_size=RSA_KEY_SIZE
@@ -111,7 +111,7 @@ class SecureFileReceiver:
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             ))
         
-        print(f"Keys saved to {self.key_dir}")
+        print(f"Clés sauvegardées dans {self.key_dir}")
     
     def _load_keys(self):
         """Load keys from files"""
@@ -126,10 +126,10 @@ class SecureFileReceiver:
             # Get RSA public key from private key
             self.rsa_public_key = self.rsa_private_key.public_key()
             
-            print("Keys loaded successfully")
+            print("Clés chargées avec succès")
         except Exception as e:
-            print(f"Error loading keys: {e}")
-            print("Generating new keys instead...")
+            print(f"Erreur lors du chargement des clés : {e}")
+            print("Génération de nouvelles clés à la place...")
             
             # Generate new keys
             self.rsa_private_key = rsa.generate_private_key(
@@ -186,25 +186,25 @@ class SecureFileReceiver:
             self.server_socket.bind(('0.0.0.0', self.port))
             self.server_socket.listen(5)
             
-            print(f"Server started. Listening on port {self.port}")
+            print(f"Serveur démarré. Écoute sur le port {self.port}")
             
             while True:
-                print("Waiting for a connection...")
+                print("En attente d'une connexion...")
                 client_socket, client_address = self.server_socket.accept()
-                print(f"Connection established with {client_address[0]}:{client_address[1]}")
+                print(f"Connexion établie avec {client_address[0]}:{client_address[1]}")
                 
                 # Handle the connection
                 try:
                     self.handle_client(client_socket)
                 except Exception as e:
-                    print(f"Error handling client: {e}")
+                    print(f"Erreur lors de la gestion du client : {e}")
                 finally:
                     client_socket.close()
                     
         except KeyboardInterrupt:
-            print("\nServer shutting down...")
+            print("\nArrêt du serveur...")
         except Exception as e:
-            print(f"Server error: {e}")
+            print(f"Erreur du serveur : {e}")
         finally:
             if hasattr(self, 'server_socket'):
                 self.server_socket.close()
@@ -219,7 +219,7 @@ class SecureFileReceiver:
         """Receive JSON data from the socket"""
         length_bytes = client_socket.recv(4)
         if not length_bytes:
-            raise ConnectionError("Connection closed by sender")
+            raise ConnectionError("Connexion fermée par l'expéditeur")
         
         length = int.from_bytes(length_bytes, byteorder='big')
         json_data = b''
@@ -229,7 +229,7 @@ class SecureFileReceiver:
         while remaining > 0:
             chunk = client_socket.recv(min(remaining, BUFFER_SIZE))
             if not chunk:
-                raise ConnectionError("Connection closed by sender")
+                raise ConnectionError("Connexion fermée par l'expéditeur")
             json_data += chunk
             remaining -= len(chunk)
         
@@ -239,7 +239,7 @@ class SecureFileReceiver:
         """Receive binary data from the socket"""
         length_bytes = client_socket.recv(8)
         if not length_bytes:
-            raise ConnectionError("Connection closed by sender")
+            raise ConnectionError("Connexion fermée par l'expéditeur")
         
         length = int.from_bytes(length_bytes, byteorder='big')
         data = b''
@@ -249,7 +249,7 @@ class SecureFileReceiver:
         while remaining > 0:
             chunk = client_socket.recv(min(remaining, BUFFER_SIZE))
             if not chunk:
-                raise ConnectionError("Connection closed by sender")
+                raise ConnectionError("Connexion fermée par l'expéditeur")
             data += chunk
             remaining -= len(chunk)
         
@@ -285,13 +285,13 @@ class SecureFileReceiver:
             
             self._send_json(client_socket, response)
             
-            print("Key exchange completed. Waiting for file...")
+            print("Échange des clés terminé. En attente du fichier...")
             
             # Receive the file
             self.receive_file(client_socket)
             
         except Exception as e:
-            print(f"Error in client handling: {e}")
+            print(f"Erreur dans la gestion du client : {e}")
             raise
     
     def receive_file(self, client_socket):
@@ -325,10 +325,10 @@ class SecureFileReceiver:
             encrypted_aes_key = base64.b64decode(secure_message['encrypted_aes_key'])
             signature = tuple(secure_message['signature'])  # (r, s)
             
-            print(f"Receiving file: {filename}")
+            print(f"Réception du fichier : {filename}")
             
             # Receive the encrypted file data
-            print("Receiving encrypted file data...")
+            print("Réception des données du fichier chiffré...")
             encrypted_file = self._receive_bytes(client_socket)
             
             # Data to verify signature
@@ -338,19 +338,19 @@ class SecureFileReceiver:
             data_hash = self._hash_data(data_to_verify)
             
             # Verify ElGamal signature
-            print("Verifying ElGamal signature...")
+            print("Vérification de la signature ElGamal...")
             if not self.sender_elgamal_public_key.verify(data_hash, signature):
-                print("ERROR: Signature verification failed! File may be tampered with.")
+                print("ERREUR : Échec de la vérification de signature ! Le fichier peut avoir été altéré.")
                 return False
             
-            print("Signature verified successfully!")
+            print("Signature vérifiée avec succès !")
             
             # Decrypt the AES key with our RSA private key
-            print("Decrypting AES key...")
+            print("Déchiffrement de la clé AES...")
             aes_key = self._decrypt_with_rsa(encrypted_aes_key)
             
             # Decrypt the file with AES
-            print("Decrypting file with AES...")
+            print("Déchiffrement du fichier avec AES...")
             decrypted_file = self._decrypt_file_with_aes(encrypted_file, iv, aes_key)
             
             # Save the file
@@ -358,11 +358,11 @@ class SecureFileReceiver:
             with open(output_path, 'wb') as f:
                 f.write(decrypted_file)
             
-            print(f"File saved successfully to {output_path}")
+            print(f"Fichier sauvegardé avec succès dans {output_path}")
             return True
             
         except Exception as e:
-            print(f"Error receiving file: {e}")
+            print(f"Erreur lors de la réception du fichier : {e}")
             return False
 
 
@@ -370,10 +370,10 @@ def main():
     """Main function to run the receiver"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='Secure File Transfer - Receiver')
-    parser.add_argument('--port', type=int, default=DEFAULT_PORT, help='Server port')
-    parser.add_argument('--key-dir', default='keys', help='Directory to store keys')
-    parser.add_argument('--new-keys', action='store_true', help='Generate new keys even if existing keys exist')
+    parser = argparse.ArgumentParser(description='Transfert de fichier sécurisé - Récepteur')
+    parser.add_argument('--port', type=int, default=DEFAULT_PORT, help='Port du serveur')
+    parser.add_argument('--key-dir', default='keys', help='Répertoire pour stocker les clés')
+    parser.add_argument('--new-keys', action='store_true', help='Générer de nouvelles clés même si des clés existantes sont présentes')
     
     args = parser.parse_args()
     
